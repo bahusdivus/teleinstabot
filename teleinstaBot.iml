@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="FacetManager">
+    <facet type="app-engine-flexible" name="Google App Engine Flexible">
+      <configuration>
+        <option name="appYamlPath" value="F:\WORK\Java\IDEA\teleinstaBot\src\main\appengine\app.yaml" />
+        <option name="dockerDirectory" value="F:\WORK\Java\IDEA\teleinstaBot\src\main\docker" />
+      </configuration>
+    </facet>
+  </component>
+</module>
