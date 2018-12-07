@@ -2,15 +2,18 @@ package ru.bahusdivus.teleinstaBot;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.sql.SQLException;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 class DbHandlerTest {
 
     @Test
-    void getInstance() throws SQLException {
+    void getInstance(){
         DbHandler db = DbHandler.getInstance();
+    }
+
+    @Test
+    void createDB() {
+        DbHandler db = DbHandler.getInstance();
+        db.createDB();
     }
 }

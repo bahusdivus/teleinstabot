@@ -9,9 +9,9 @@ import java.io.*;
 import java.net.*;
 import java.util.regex.*;
 
-public class teleinstaBot {
+class teleinstaBot {
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
 
         //IG media parser (to get comments)
         /*
