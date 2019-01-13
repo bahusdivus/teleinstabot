@@ -36,7 +36,7 @@ class DbHandler {
     void createDB() {
         try (Statement statement = this.connection.createStatement()) {
             statement.execute("CREATE TABLE if not exists users (id int AUTO_INCREMENT, instId text, chatId bigint, taskTaken timestamp, taskComplite timestamp, PRIMARY KEY (id));");
-            statement.execute("CREATE TABLE if not exists task (id int AUTO_INCREMENT, ownerId int, postId text, isLikeRequired boolean, commentRequeredLenght int, comment text, created timestamp, PRIMARY KEY (id));");
+            statement.execute("CREATE TABLE if not exists task (id int AUTO_INCREMENT, ownerId int, postId text, isLikeRequired boolean, commentRequiredLength int, comment text, created timestamp, PRIMARY KEY (id));");
             statement.execute("CREATE TABLE if not exists taskList (id int AUTO_INCREMENT, userId int, taskId int, PRIMARY KEY (id));");
         } catch (SQLException e) {
             e.printStackTrace();
@@ -84,6 +84,27 @@ class DbHandler {
             }
         } catch (SQLException e) {
             e.printStackTrace();
+        }
+    }
+
+    ArrayList<UserTask> getTaskList(int id) {
+        ArrayList<UserTask> list = new ArrayList<>();
+        try (Statement statement = this.connection.createStatement()) {
+            ResultSet resultSet = statement.executeQuery("SELECT * FROM task INNER JOIN tasklist ON tasklist.taskId = task.id WHERE userId = " + id + ";");
+            while (resultSet.next()) {
+                list.add(new UserTask(resultSet.getInt("id"),
+                        resultSet.getInt("ownerId"),
+                        resultSet.getString("postId"),
+                        resultSet.getBoolean("isLikeRequired"),
+                        resultSet.getInt("commentRequiredLength"),
+                        resultSet.getString("comment"),
+                        resultSet.getTimestamp("created")
+                ));
+            }
+            return list;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
         }
     }
 }
