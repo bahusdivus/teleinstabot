@@ -7,9 +7,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import ru.bahusdivus.teleinstaBot.Scrapper.TibInstagramScrapper;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.URL;
+import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -21,11 +19,13 @@ class ReplayBuilder {
     private String replayText;
     private DbHandler db;
     private ReplyKeyboardMarkup replyKeyboardMarkup;
+    private TibInstagramScrapper scrapper;
 
     ReplayBuilder(String messageText, Long chatId) {
         this.messageText = messageText;
         this.chatId = chatId;
         db = DbHandler.getInstance();
+        scrapper = TibInstagramScrapper.getInstance();
     }
 
     String getReplayText() {
@@ -55,9 +55,6 @@ class ReplayBuilder {
     void buildReplay() {
         User user = db.getUserByChatId(chatId);
         if (user == null) {
-//            Pattern p = Pattern.compile("^@@[A-Za-z0-9\\._]+", Pattern.DOTALL);
-//            Matcher m = p.matcher(messageText);
-//            if(m.matches()) {
             if(Pattern.matches("^@[\\w.]+$", messageText)) {
                 user = new User(messageText, chatId);
                 db.saveUser(user);
@@ -85,7 +82,9 @@ class ReplayBuilder {
         ArrayList<UserTask> taskList = db.getTaskList(user.getId());
         for(UserTask task : taskList) {
             if (task.isLikeRequired()) {
-                if (!checkLike(user.getInstId(), task.getPostId())) replay.append("Нужен лайк\n");
+                if (!checkLike(user.getInstId(), task.getPostId())) {
+                    replay.append("Нужен лайк\n");
+                }
             }
             if (task.getCommentRequiredLength() > 0) {
                 if (!checkComment(user.getInstId(), task.getPostId(), task.getCommentRequiredLength())) {
@@ -107,20 +106,13 @@ class ReplayBuilder {
 
     private boolean checkComment(String instId, String postId, int commentsRequiresLength) {
         String dataResult = null;
-        try (BufferedReader in = new BufferedReader(
-                new InputStreamReader(
-                        new URL("https://www.instagram.com/p/" + postId + "/").openConnection().getInputStream(),
-                        StandardCharsets.UTF_8))){
-            String inputLine;
-            while ((inputLine = in.readLine()) != null){
-                Pattern p = Pattern.compile("(.*?)_sharedData = (.*?);</script>(.*?)", Pattern.DOTALL);
-                Matcher m = p.matcher(inputLine);
-                if (m.matches()) {
-                    dataResult = m.group(2);
-                    break;
-                }
-            }
-        } catch (Exception e) {
+
+        try {
+            String inputLine = scrapper.getPageBody("https://www.instagram.com/p/" + postId + "/");
+            Pattern p = Pattern.compile("(.*?)_sharedData = (.*?);</script>(.*?)", Pattern.DOTALL);
+            Matcher m = p.matcher(inputLine);
+            if (m.matches()) dataResult = m.group(2);
+        } catch (IOException e) {
             e.printStackTrace();
             return false;
         }
@@ -135,9 +127,8 @@ class ReplayBuilder {
         while (hasNext) {
             if (edgesJson == null) {
                 try {
-                    TibInstagramScrapper scrapper = TibInstagramScrapper.getInstance();
                     endCursor = URLEncoder.encode(Objects.requireNonNull(endCursor), StandardCharsets.UTF_8.toString());
-                    String url = "https://www.instagram.com/graphql/query/?query_hash=f0986789a5c5d17c2400faebf16efd0d&variables=%7B%22shortcode%22%3A%22BrKs5pyltwM%22%2C%22first%22%3A32%2C%22after%22%3A%22" + endCursor + "%22%7D";
+                    String url = "https://www.instagram.com/graphql/query/?query_hash=f0986789a5c5d17c2400faebf16efd0d&variables=%7B%22shortcode%22%3A%22" + postId + "%22%2C%22first%22%3A32%2C%22after%22%3A%22" + endCursor + "%22%7D";
                     dataResult = scrapper.getPageBody(url);
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -165,6 +156,44 @@ class ReplayBuilder {
     }
 
     private boolean checkLike(String instId, String postId) {
+        String dataResult;
+
+        try {
+            String url = "https://www.instagram.com/graphql/query/?query_hash=e0f59e4a1c8d78d0161873bc2ee7ec44&variables=%7B%22shortcode%22%3A%22" + postId + "%22%2C%22include_reel%22%3Atrue%2C%22first%22%3A24%7D";
+            dataResult = scrapper.getPageBody(url);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+
+        if (dataResult == null) return false;
+        JSONObject rootJson = new JSONObject(dataResult);
+        JSONObject edgesJson = rootJson.getJSONObject("data").getJSONObject("shortcode_media").getJSONObject("edge_liked_by");
+        boolean hasNext = true;
+        String endCursor = null;
+        while (hasNext) {
+            if (edgesJson == null) {
+                try {
+                    endCursor = URLEncoder.encode(Objects.requireNonNull(endCursor), StandardCharsets.UTF_8.toString());
+                    String url = "https://www.instagram.com/graphql/query/?query_hash=e0f59e4a1c8d78d0161873bc2ee7ec44&variables=%7B%22shortcode%22%3A%22" + postId + "%22%2C%22include_reel%22%3Atrue%2C%22first%22%3A24%2C%22after%22%3A%22" + endCursor + "%22%7D";
+                    dataResult = scrapper.getPageBody(url);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return false;
+                }
+                edgesJson = new JSONObject(dataResult).getJSONObject("data").getJSONObject("shortcode_media").getJSONObject("edge_liked_by");
+            }
+
+            JSONArray commentsArray = edgesJson.getJSONArray("edges");
+            for (int i = 0; i < commentsArray.length(); i++) {
+                JSONObject currentNode = commentsArray.getJSONObject(i).getJSONObject("node");
+                if (instId.equals("@" + currentNode.getString("username"))) return true;
+            }
+
+            hasNext = edgesJson.getJSONObject("page_info").getBoolean("has_next_page");
+            if (hasNext) endCursor = edgesJson.getJSONObject("page_info").getString("end_cursor");
+            edgesJson = null;
+        }
         return false;
     }
 }

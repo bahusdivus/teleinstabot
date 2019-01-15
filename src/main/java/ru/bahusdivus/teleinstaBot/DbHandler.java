@@ -43,19 +43,6 @@ class DbHandler {
         }
     }
 
-    //Back up function
-    /*
-    public Boolean makeBackup (int n) {
-        try (Statement statement = this.connection.createStatement()) {
-            statement.executeUpdate("backup to backup" + n + ".s3db");
-            return true;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-    */
-
     User getUserByChatId(Long chatId) {
         try (Statement statement = this.connection.createStatement()) {
             ResultSet resultSet = statement.executeQuery("SELECT * FROM users WHERE chatId = '" + chatId + "';");

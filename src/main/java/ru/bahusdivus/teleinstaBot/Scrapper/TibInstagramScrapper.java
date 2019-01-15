@@ -36,9 +36,10 @@ public class TibInstagramScrapper {
 
         try (InputStream reader = this.getClass().getClassLoader().getResourceAsStream("db.properties")) {
             if (reader != null) {
+                basePage();
                 Properties properties = new Properties();
                 properties.load(reader);
-                basePage();
+                //TODO Next method isn't reliable. Need some work to deal with IG login challenges
                 login(properties.getProperty("ig.user"), properties.getProperty("ig.password"));
             }
         } catch (IOException e) {
@@ -62,7 +63,7 @@ public class TibInstagramScrapper {
 
         Response response = executeHttpRequest(request);
         try (ResponseBody body = response.body()){
-            if(this.csrf_token.isEmpty()) this.csrf_token = getCSRFToken(body);
+            if(csrf_token == null) csrf_token = getCSRFToken(body);
         }
     }
 
@@ -94,7 +95,7 @@ public class TibInstagramScrapper {
     private void login(String username, String password) throws IOException {
         if (username == null || password == null) {
             throw new IOException("Specify username and password");
-        }else if(this.csrf_token.isEmpty()) {
+        }else if(csrf_token == null) {
             throw new NullPointerException("Please run before base()");
         }
 

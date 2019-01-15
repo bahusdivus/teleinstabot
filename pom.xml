@@ -68,7 +68,7 @@
                             <archive>
                                 <manifest>
                                     <mainClass>
-                                        ru.bahusdivus.teleinstaBot.teleinstaBot
+                                        ru.bahusdivus.teleinstaBot.TeleInstaBot
                                     </mainClass>
                                 </manifest>
                             </archive>
