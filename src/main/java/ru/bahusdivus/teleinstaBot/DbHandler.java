@@ -77,7 +77,7 @@ class DbHandler {
     ArrayList<UserTask> getTaskList(int id) {
         ArrayList<UserTask> list = new ArrayList<>();
         try (Statement statement = this.connection.createStatement()) {
-            ResultSet resultSet = statement.executeQuery("SELECT * FROM task INNER JOIN tasklist ON tasklist.taskId = task.id WHERE userId = " + id + ";");
+            ResultSet resultSet = statement.executeQuery("SELECT task.* FROM task INNER JOIN tasklist ON tasklist.taskId = task.id WHERE userId = " + id + ";");
             while (resultSet.next()) {
                 list.add(new UserTask(resultSet.getInt("id"),
                         resultSet.getInt("ownerId"),
@@ -92,6 +92,14 @@ class DbHandler {
         } catch (SQLException e) {
             e.printStackTrace();
             return null;
+        }
+    }
+
+    void compliteTask(int userId, int taskId) {
+        try (Statement statement = this.connection.createStatement()) {
+            statement.execute("DELETE FROM tasklist WHERE userId = " + userId + " AND taskId = " + taskId);
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
     }
 }

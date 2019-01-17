@@ -81,26 +81,37 @@ class ReplayBuilder {
         StringBuilder replay = new StringBuilder();
         ArrayList<UserTask> taskList = db.getTaskList(user.getId());
         for(UserTask task : taskList) {
+            boolean isPass = true;
+            StringBuilder taskResult = new StringBuilder("https://www.instagram.com/p/" + task.getPostId() + "/");
+            taskResult.append(System.lineSeparator());
             if (task.isLikeRequired()) {
                 if (!checkLike(user.getInstId(), task.getPostId())) {
-                    replay.append("Нужен лайк\n");
+                    taskResult.append("Нужен лайк");
+                    taskResult.append(System.lineSeparator());
+                    isPass = false;
                 }
             }
             if (task.getCommentRequiredLength() > 0) {
                 if (!checkComment(user.getInstId(), task.getPostId(), task.getCommentRequiredLength())) {
-                    replay.append("Нужен комментарий не менее ");
-                    replay.append(task.getCommentRequiredLength());
-                    replay.append(" слов\n");
+                    taskResult.append("Нужен комментарий не менее ");
+                    taskResult.append(task.getCommentRequiredLength());
+                    taskResult.append(" слов");
+                    taskResult.append(System.lineSeparator());
+                    isPass = false;
                 }
             }
-            if (task.getComment().length() > 0) {
-                replay.append(task.getComment());
-                replay.append(System.lineSeparator());
-                replay.append(System.lineSeparator());
+            if (isPass) {
+                db.compliteTask(user.getId(), task.getId());
+            } else {
+                if (task.getComment().length() > 0) {
+                    taskResult.append(task.getComment());
+                    taskResult.append(System.lineSeparator());
+                    taskResult.append(System.lineSeparator());
+                }
+                replay.append(taskResult.toString());
             }
-            replay.append(task.toString()).append("\n");
         }
-        replay.append("Тут будет результат проверки");
+        if (replay.length() == 0) replay.append("Вы выполнили все условия и можете разместить ссылку!");
         return replay.toString();
     }
 

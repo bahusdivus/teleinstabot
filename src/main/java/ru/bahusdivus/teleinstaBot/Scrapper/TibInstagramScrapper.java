@@ -2,11 +2,9 @@ package ru.bahusdivus.teleinstaBot.Scrapper;
 
 import okhttp3.*;
 import okhttp3.logging.HttpLoggingInterceptor;
-import org.json.JSONObject;
 
 import java.io.*;
 import java.security.SecureRandom;
-import java.util.Properties;
 import java.util.stream.Collectors;
 
 public class TibInstagramScrapper {
@@ -16,8 +14,8 @@ public class TibInstagramScrapper {
     private SecureRandom random = new SecureRandom();
     private static TibInstagramScrapper instance;
 
-    private static final String LOGIN_URL = "https://www.instagram.com/accounts/login/ajax/";
-    private static final String REFERER = "Referer";
+//    private static final String LOGIN_URL = "https://www.instagram.com/accounts/login/ajax/";
+//    private static final String REFERER = "Referer";
     private static final String BASE_URL = "https://www.instagram.com";
 
     public static TibInstagramScrapper getInstance() {
@@ -34,14 +32,8 @@ public class TibInstagramScrapper {
                 .cookieJar(new DefaultCookieJar())
                 .build();
 
-        try (InputStream reader = this.getClass().getClassLoader().getResourceAsStream("db.properties")) {
-            if (reader != null) {
-                basePage();
-                Properties properties = new Properties();
-                properties.load(reader);
-                //TODO Next method isn't reliable. Need some work to deal with IG login challenges
-                login(properties.getProperty("ig.user"), properties.getProperty("ig.password"));
-            }
+        try {
+            basePage();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -92,6 +84,8 @@ public class TibInstagramScrapper {
         throw new NullPointerException("Couldn't find CSRFToken");
     }
 
+    //Work unreliably, because of Instagram login challenges time to time. Replaced with hand-made cookies
+/*
     private void login(String username, String password) throws IOException {
         if (username == null || password == null) {
             throw new IOException("Specify username and password");
@@ -117,6 +111,7 @@ public class TibInstagramScrapper {
             }
         }
     }
+*/
 
     private Response executeHttpRequest(Request request) throws IOException {
         Response response = this.httpClient.newCall(request).execute();
