@@ -10,6 +10,7 @@ import ru.bahusdivus.teleinstaBot.Scrapper.TibInstagramScrapper;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
 import java.util.*;
 import java.util.regex.*;
 
@@ -25,7 +26,13 @@ class ReplayBuilder {
         this.messageText = messageText;
         this.chatId = chatId;
         db = DbHandler.getInstance();
-        scrapper = TibInstagramScrapper.getInstance();
+    }
+
+    //Test purpose constructor
+    ReplayBuilder(String messageText, Long chatId, DbHandler db) {
+        this.messageText = messageText;
+        this.chatId = chatId;
+        this.db = db;
     }
 
     String getReplayText() {
@@ -65,7 +72,22 @@ class ReplayBuilder {
         } else {
             switch (messageText) {
                 case "Получить задание":
-                    replayText = "Тут будет задание";
+                    ArrayList<UserTask> tasks = db.getTaskList(user.getId());
+                    if (tasks == null) {
+                        replayText = "Все задания выполнены, можно размещать ссылку";
+                    } else {
+                        StringBuilder replay = new StringBuilder("Ваше задание:\n");
+                        for (UserTask task : tasks) {
+                            replay.append("https://www.instagram.com/p/").append(task.getPostId()).append("/\n");
+                            replay.append("Нужен ");
+                            if (task.isLikeRequired()) replay.append("лайк");
+                            if (task.isLikeRequired() && (task.getCommentRequiredLength() > 0)) replay.append(" и ");
+                            if (task.getCommentRequiredLength() > 0) replay.append("комментарий от ").append(task.getCommentRequiredLength()).append(" слов\n");
+                            if (task.getComment() != null) replay.append("Комментарий к заданию: ").append(task.getComment()).append("\n");
+                            replay.append("\n");
+                        }
+                        replayText = replay.toString();
+                    }
                     break;
                 case "Проверить задание":
                     replayText = checkTask(user);
@@ -78,7 +100,16 @@ class ReplayBuilder {
     }
 
     private String checkTask(User user) {
+        scrapper = TibInstagramScrapper.getInstance();
         StringBuilder replay = new StringBuilder();
+        Timestamp dayBefore = new Timestamp(System.currentTimeMillis() - 1000 * 60 * 60 * 24);
+
+        //Logic is: if user completed all task after {dayBefore}, he can post their own
+        if (user.getTaskComplite() != null && user.getTaskTaken().before(user.getTaskComplite())) {
+            return "Вы выполнили все условия и можете разместить ссылку!";
+        }
+
+
         ArrayList<UserTask> taskList = db.getTaskList(user.getId());
         for(UserTask task : taskList) {
             boolean isPass = true;
@@ -111,7 +142,10 @@ class ReplayBuilder {
                 replay.append(taskResult.toString());
             }
         }
-        if (replay.length() == 0) replay.append("Вы выполнили все условия и можете разместить ссылку!");
+        if (replay.length() == 0) {
+            db.setTaskCompliteTime(user);
+            return "Вы выполнили все условия и можете разместить ссылку!";
+        }
         return replay.toString();
     }
 

@@ -11,7 +11,7 @@ public class UserTask {
     private String comment;
     private Timestamp created;
 
-    UserTask(int id, int ownerId, String postId, boolean isLikeRequired, int commentRequiredLength, String comment, Timestamp created) {
+    public UserTask(int id, int ownerId, String postId, boolean isLikeRequired, int commentRequiredLength, String comment, Timestamp created) {
         this.id = id;
         this.ownerId = ownerId;
         this.postId = postId;
