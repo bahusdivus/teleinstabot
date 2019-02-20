@@ -77,7 +77,11 @@ class DbHandler {
     ArrayList<UserTask> getTaskList(int id) {
         ArrayList<UserTask> list = new ArrayList<>();
         try (Statement statement = this.connection.createStatement()) {
-            ResultSet resultSet = statement.executeQuery("SELECT task.* FROM task INNER JOIN tasklist ON tasklist.taskId = task.id WHERE userId = " + id + ";");
+            ResultSet resultSet = statement.executeQuery(
+                    "SELECT task.* FROM task LEFT JOIN tasklist ON tasklist.taskId = task.id " +
+                            "WHERE task.created > DATE_SUB(NOW(), INTERVAL 1 day) " +
+                            "AND (tasklist.userId IS NULL OR tasklist.userId <> " + id + ")" +
+                            "AND task.ownerId <> " + id);
             while (resultSet.next()) {
                 list.add(new UserTask(resultSet.getInt("id"),
                         resultSet.getInt("ownerId"),
@@ -97,7 +101,7 @@ class DbHandler {
 
     void compliteTask(int userId, int taskId) {
         try (Statement statement = this.connection.createStatement()) {
-            statement.execute("DELETE FROM tasklist WHERE userId = " + userId + " AND taskId = " + taskId);
+            statement.execute("INSERT INTO tasklist (userid, taskid) VALUES (" + userId + ", " + taskId + ")");
         } catch (SQLException e) {
             e.printStackTrace();
         }
