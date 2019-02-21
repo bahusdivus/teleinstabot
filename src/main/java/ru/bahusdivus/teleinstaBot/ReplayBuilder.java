@@ -4,8 +4,10 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMar
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 class ReplayBuilder {
@@ -15,6 +17,7 @@ class ReplayBuilder {
     private DbHandler db;
     private ReplyKeyboardMarkup replyKeyboardMarkup;
     private TaskResultParser parser;
+    private Long currentTime;
 
     ReplayBuilder(String messageText, Long chatId) {
         this.messageText = messageText;
@@ -27,6 +30,10 @@ class ReplayBuilder {
 
     public void setParser (TaskResultParser parser) {
         this.parser = parser;
+    }
+
+    public void setCurrentTime (Long currentTime) {
+        this.currentTime = currentTime;
     }
 
     String getReplayText() {
@@ -55,6 +62,7 @@ class ReplayBuilder {
 
     void buildReplay() {
         if (db == null) db = DbHandler.getInstance();
+        if (currentTime == null) currentTime = System.currentTimeMillis();
         User user = db.getUserByChatId(chatId);
         if (user == null) {
             if(Pattern.matches("^@[\\w.]+$", messageText)) {
@@ -93,8 +101,50 @@ class ReplayBuilder {
                         replayText = checkTask(user, tasks);
                     }
                     break;
+                case "Разместить ссылку":
+                    tasks = db.getTaskList(user.getId());
+                    if (tasks != null) {
+                        replayText = "Прежде, чем вы сможете разместить ссылку, вы должны выполнить все задания.\n";
+                        replayText += "Используйте команды \"Получить задание\" и \"Проверить задание\"\n";
+                    } else {
+                        long difference = currentTime - user.getTaskComplite().getTime();
+                        if (difference > (24 * 60 * 60 * 1000)) {
+                            replayText = "Для размещения ссылки отправьте сообщение, содержащее сдедующие строки:\n";
+                            replayText += "1. Ссылка на пост в Instagram, например https://www.instagram.com/p/BtPN5xJBojL/\n";
+                            replayText += "2. Если нужен лайк, строка должна содержать слово \"лайк\". Если лайк не нужен, пропустите эту строку.\n";
+                            replayText += "3. Если нужен комментарий, строка должна содержать слово \"комментарий\" и минимальное количество слов в коментарии (если нужно). Минимальное количество слов в коментарии не может быть больше 4. Например: \"Комментарий от 3 слов\" или просто \"комментарий 3\". Если комментарий не нужен, пропустите эту строку.\n";
+                            replayText += "4. Если вы хотите оставить какое то пояснение к своему заданию, вы можете сделать это в этой строке.\n";
+                        } else {
+                            replayText = "С момента предыдущего размещения прошло " + getInterval(difference) + "\n";
+                            replayText += "Вы сможете разместить ссылку через " + getInterval((24 * 60 * 60 * 1000) - difference) + "\n";
+                        }
+                    }
+                    break;
                 default:
-                    replayText = "Тут будут парситься другие строки";
+                    UserTask userTask = parseTask(messageText, user.getId());
+                    if (userTask == null) {
+                        replayText = "Команда не распознана =(";
+                    } else {
+                        tasks = db.getTaskList(user.getId());
+                        if (tasks != null) {
+                            replayText = "Прежде, чем вы сможете разместить ссылку, вы должны выполнить все задания.\n";
+                            replayText += "Используйте команды \"Получить задание\" и \"Проверить задание\"\n";
+                        } else {
+                            long difference = currentTime - user.getTaskComplite().getTime();
+                            if (difference < (24 * 60 * 60 * 1000)) {
+                                replayText = "С момента предыдущего размещения прошло " + getInterval(difference) + "\n";
+                                replayText += "Вы сможете разместить ссылку через " + getInterval((24 * 60 * 60 * 1000) - difference) + "\n";
+                            } else {
+                                replayText = "Ссылка размещена:\n";
+                                replayText += "https://www.instagram.com/p/" + userTask.getPostId() + "/\n";
+                                if (userTask.isLikeRequired()) replayText += "Нужен лайк\n";
+                                if (userTask.getCommentRequiredLength() > 0)
+                                    replayText += "Комментарий от " + userTask.getCommentRequiredLength() + " слов\n";
+                                replayText += userTask.getComment();
+                            }
+                        }
+                    }
+
             }
         }
         buildMarkup();
@@ -131,10 +181,60 @@ class ReplayBuilder {
             }
         }
         if (replay.length() == 0) {
-            db.setTaskCompliteTime(user);
-            return "Вы выполнили все условия и можете в течении суток разместить одну ссылку!";
+            return "Вы выполнили все условия и можете разместить ссылку!";
         }
         return replay.toString();
     }
 
+    private String getInterval(Long ms) {
+        long x = ms / 1000;
+        long seconds = x % 60;
+        x /= 60;
+        long minutes = x % 60;
+        x /= 60;
+        long hours = x % 24;
+        return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+    }
+
+    private UserTask parseTask (String task, int userId) {
+        String postId;
+        boolean isLikeRequired = false;
+        int commentRequiredLength = 0;
+        String comment = null;
+
+        String[] lines = task.split("\n");
+        if (lines.length > 4 || lines.length < 2) return null;
+
+        int i = 0;
+        Pattern p = Pattern.compile("(.*?)instagram.com/p/(.*?)/(.*?)", Pattern.DOTALL);
+        Matcher m = p.matcher(lines[i]);
+        if (m.matches()) {
+            postId = m.group(2);
+            i++;
+        } else return null;
+
+        p = Pattern.compile("(.*?)(лайк|Лайк)(.*?)", Pattern.DOTALL);
+        m = p.matcher(lines[i]);
+        if (m.matches()) {
+            isLikeRequired = true;
+            i++;
+        }
+
+        if (lines.length > i) {
+            p = Pattern.compile("(.*?)(комментарий|Комментарий)(.*?)([0-9]{1,})(.*?)", Pattern.DOTALL);
+            m = p.matcher(lines[i]);
+            if (m.matches()) {
+                commentRequiredLength = Integer.parseInt(m.group(4));
+                i++;
+            }
+        }
+
+        if (lines.length > i) {
+            comment = lines[i];
+        }
+
+        if (!isLikeRequired && commentRequiredLength == 0) return null;
+
+        return new UserTask(userId, postId, isLikeRequired, commentRequiredLength, comment, new Timestamp(System.currentTimeMillis()));
+    }
 }

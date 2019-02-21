@@ -26,10 +26,6 @@ class User {
         return id;
     }
 
-    void setId(int id) {
-        this.id = id;
-    }
-
     String getInstId() {
         return instId;
     }

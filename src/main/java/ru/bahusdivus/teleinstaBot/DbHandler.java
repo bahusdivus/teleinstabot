@@ -106,14 +106,4 @@ class DbHandler {
             e.printStackTrace();
         }
     }
-
-    void setTaskCompliteTime(User user) {
-        try (PreparedStatement statement = this.connection.prepareStatement("UPDATE users SET taskComplite = ? WHERE id = ?")) {
-            statement.setTimestamp(1, new Timestamp(System.currentTimeMillis()));
-            statement.setInt(2, user.getId());
-            statement.execute();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
 }
