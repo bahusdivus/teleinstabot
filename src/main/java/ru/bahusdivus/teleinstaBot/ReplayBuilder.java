@@ -48,8 +48,9 @@ class ReplayBuilder {
 
         List<KeyboardRow> keyboard = new ArrayList<>();
         KeyboardRow keyboardFirstRow = new KeyboardRow();
+        keyboardFirstRow.add(new KeyboardButton("Получить задание"));
         keyboardFirstRow.add(new KeyboardButton("Проверить задание"));
-//        keyboardFirstRow.add(new KeyboardButton("Помощь"));
+        keyboardFirstRow.add(new KeyboardButton("Разместить ссылку"));
 
         keyboard.add(keyboardFirstRow);
         replyKeyboardMarkup.setKeyboard(keyboard);
@@ -69,8 +70,10 @@ class ReplayBuilder {
                 user = new User(messageText, chatId);
                 db.saveUser(user);
                 replayText = "Сохраняем ник \"" + messageText + "\"";
+                buildMarkup();
             } else {
                 replayText = "Для начала работы с ботом вам необходимо зарегистрировать свой аккаунт Instagram. Просто отправьте свой ник, начинающийся с символа @";
+                replyKeyboardMarkup = null;
             }
         } else {
             ArrayList<UserTask> tasks;
@@ -135,6 +138,7 @@ class ReplayBuilder {
                                 replayText = "С момента предыдущего размещения прошло " + getInterval(difference) + "\n";
                                 replayText += "Вы сможете разместить ссылку через " + getInterval((24 * 60 * 60 * 1000) - difference) + "\n";
                             } else {
+                                db.saveTask(userTask);
                                 replayText = "Ссылка размещена:\n";
                                 replayText += "https://www.instagram.com/p/" + userTask.getPostId() + "/\n";
                                 if (userTask.isLikeRequired()) replayText += "Нужен лайк\n";
@@ -146,8 +150,8 @@ class ReplayBuilder {
                     }
 
             }
+            buildMarkup();
         }
-        buildMarkup();
     }
 
     private String checkTask(User user, ArrayList<UserTask> tasks) {
@@ -225,6 +229,7 @@ class ReplayBuilder {
             m = p.matcher(lines[i]);
             if (m.matches()) {
                 commentRequiredLength = Integer.parseInt(m.group(4));
+                if (commentRequiredLength > 4) commentRequiredLength = 4;
                 i++;
             }
         }

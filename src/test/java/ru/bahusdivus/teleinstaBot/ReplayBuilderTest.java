@@ -20,6 +20,7 @@ class ReplayBuilderTest {
         replayBuilder.setDb(dbHandler);
         replayBuilder.buildReplay();
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
+        Assertions.assertEquals(null, replayBuilder.getReplyKeyboardMarkup());
     }
 
     @Test
@@ -32,6 +33,7 @@ class ReplayBuilderTest {
         replayBuilder.setDb(dbHandler);
         replayBuilder.buildReplay();
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
+        Assertions.assertNotNull(replayBuilder.getReplyKeyboardMarkup());
     }
 
     @Test
@@ -57,6 +59,7 @@ class ReplayBuilderTest {
         replayBuilder.setDb(dbHandler);
         replayBuilder.buildReplay();
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
+        Assertions.assertNotNull(replayBuilder.getReplyKeyboardMarkup());
     }
 
     @Test
@@ -76,6 +79,7 @@ class ReplayBuilderTest {
         replayBuilder.setDb(dbHandler);
         replayBuilder.buildReplay();
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
+        Assertions.assertNotNull(replayBuilder.getReplyKeyboardMarkup());
     }
 
     @Test
@@ -92,6 +96,7 @@ class ReplayBuilderTest {
         replayBuilder.setDb(dbHandler);
         replayBuilder.buildReplay();
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
+        Assertions.assertNotNull(replayBuilder.getReplyKeyboardMarkup());
     }
 
     @Test
@@ -115,6 +120,7 @@ class ReplayBuilderTest {
         replayBuilder.setParser(parser);
         replayBuilder.buildReplay();
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
+        Assertions.assertNotNull(replayBuilder.getReplyKeyboardMarkup());
     }
 
     @Test
@@ -138,6 +144,7 @@ class ReplayBuilderTest {
         replayBuilder.setParser(parser);
         replayBuilder.buildReplay();
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
+        Assertions.assertNotNull(replayBuilder.getReplyKeyboardMarkup());
     }
 
     @Test
@@ -161,6 +168,7 @@ class ReplayBuilderTest {
         replayBuilder.setParser(parser);
         replayBuilder.buildReplay();
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
+        Assertions.assertNotNull(replayBuilder.getReplyKeyboardMarkup());
     }
 
     @Test
@@ -184,6 +192,7 @@ class ReplayBuilderTest {
         replayBuilder.setParser(parser);
         replayBuilder.buildReplay();
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
+        Assertions.assertNotNull(replayBuilder.getReplyKeyboardMarkup());
     }
 
     @Test
@@ -254,6 +263,7 @@ class ReplayBuilderTest {
         replayBuilder.setDb(dbHandler);
         replayBuilder.buildReplay();
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
+        Assertions.assertNotNull(replayBuilder.getReplyKeyboardMarkup());
     }
 
     @Test
@@ -271,6 +281,7 @@ class ReplayBuilderTest {
         replayBuilder.setCurrentTime(ms);
         replayBuilder.buildReplay();
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
+        Assertions.assertNotNull(replayBuilder.getReplyKeyboardMarkup());
     }
 
     @Test
@@ -293,6 +304,7 @@ class ReplayBuilderTest {
         replayBuilder.setCurrentTime(ms);
         replayBuilder.buildReplay();
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
+        Assertions.assertNotNull(replayBuilder.getReplyKeyboardMarkup());
     }
 
     @Test
@@ -315,6 +327,8 @@ class ReplayBuilderTest {
         replayBuilder.setDb(dbHandler);
         replayBuilder.buildReplay();
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
+        Mockito.verify(dbHandler, Mockito.never()).saveTask(Mockito.any(UserTask.class));
+        Assertions.assertNotNull(replayBuilder.getReplyKeyboardMarkup());
     }
 
     @Test
@@ -337,6 +351,42 @@ class ReplayBuilderTest {
         replayBuilder.setCurrentTime(ms);
         replayBuilder.buildReplay();
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
+        Mockito.verify(dbHandler, Mockito.never()).saveTask(Mockito.any(UserTask.class));
+        Assertions.assertNotNull(replayBuilder.getReplyKeyboardMarkup());
+    }
+
+    @Test
+    void buildReplay_userPostLinkAllDoneWrongFormat_assertReplayString() {
+        long ms = System.currentTimeMillis();
+        Timestamp compliteTimestamp = new Timestamp(ms - 25 * 60 * 60 * 1000);
+
+        DbHandler dbHandler = Mockito.mock(DbHandler.class);
+        Mockito.when(dbHandler.getUserByChatId(1L)).thenReturn(new User(1, "@username", 1L, compliteTimestamp, compliteTimestamp));
+        Mockito.when(dbHandler.getTaskList(1)).thenReturn(null);
+
+        String linkTest = "https://www.instagram.com/p/\n";
+        linkTest += "Нужен лайк\n";
+        linkTest += "Комментарий от 3 слов\n";
+        linkTest += "Мама мыла раму";
+        ReplayBuilder replayBuilder = new ReplayBuilder(linkTest, 1L);
+        replayBuilder.setDb(dbHandler);
+        replayBuilder.setCurrentTime(ms);
+        replayBuilder.buildReplay();
+
+        Assertions.assertEquals("Команда не распознана =(", replayBuilder.getReplayText());
+        Assertions.assertNotNull(replayBuilder.getReplyKeyboardMarkup());
+
+        linkTest = "https://www.instagram.com/p/BtPN5xJBojL/\n";
+        linkTest += "Мама мыла раму";
+        replayBuilder = new ReplayBuilder(linkTest, 1L);
+        replayBuilder.setDb(dbHandler);
+        replayBuilder.setCurrentTime(ms);
+        replayBuilder.buildReplay();
+
+        Assertions.assertEquals("Команда не распознана =(", replayBuilder.getReplayText());
+        Assertions.assertNotNull(replayBuilder.getReplyKeyboardMarkup());
+
+        Mockito.verify(dbHandler, Mockito.never()).saveTask(Mockito.any(UserTask.class));
     }
 
     @Test
@@ -364,6 +414,8 @@ class ReplayBuilderTest {
         replayBuilder.setCurrentTime(ms);
         replayBuilder.buildReplay();
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
+        Mockito.verify(dbHandler).saveTask(ArgumentMatchers.eq(new UserTask(1, "BtPN5xJBojL", true, 3, "Мама мыла раму", new Timestamp(ms))));
+        Assertions.assertNotNull(replayBuilder.getReplyKeyboardMarkup());
     }
 
     @Test
@@ -380,6 +432,7 @@ class ReplayBuilderTest {
         replayBuilder.setDb(dbHandler);
         replayBuilder.buildReplay();
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
+        Assertions.assertNotNull(replayBuilder.getReplyKeyboardMarkup());
     }
 
 
