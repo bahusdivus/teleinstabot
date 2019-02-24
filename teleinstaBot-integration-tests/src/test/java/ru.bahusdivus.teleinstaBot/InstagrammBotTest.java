@@ -1,13 +1,7 @@
 package ru.bahusdivus.teleinstaBot;
 
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import org.telegram.telegrambots.meta.api.objects.Message;
-import org.telegram.telegrambots.meta.api.objects.Update;
-
-
 class InstagrammBotTest {
-
+/*
     private InstagrammBot bot = new InstagrammBot();
     @Test
     void onUpdateReceived() {
@@ -21,5 +15,5 @@ class InstagrammBotTest {
 
         bot.onUpdateReceived(update);
     }
-
+*/
 }

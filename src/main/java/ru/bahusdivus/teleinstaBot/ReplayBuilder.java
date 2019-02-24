@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-class ReplayBuilder {
+abstract class ReplayBuilder {
     private String messageText;
     private Long chatId;
     private String replayText;
@@ -24,21 +24,23 @@ class ReplayBuilder {
         this.chatId = chatId;
     }
 
-    public void setDb (DbHandler db) {
+    void setDb(DbHandler db) {
         this.db = db;
     }
 
-    public void setParser (TaskResultParser parser) {
+    void setParser(TaskResultParser parser) {
         this.parser = parser;
     }
 
-    public void setCurrentTime (Long currentTime) {
+    void setCurrentTime(Long currentTime) {
         this.currentTime = currentTime;
     }
 
     String getReplayText() {
         return replayText;
     }
+
+    Long getCurrentTime() {return currentTime;}
 
     private void buildMarkup() {
         replyKeyboardMarkup = new ReplyKeyboardMarkup();
@@ -62,8 +64,10 @@ class ReplayBuilder {
     }
 
     void buildReplay() {
+        //Lazy initialization. If class on test there will be stubs
         if (db == null) db = DbHandler.getInstance();
         if (currentTime == null) currentTime = System.currentTimeMillis();
+        //TODO: There is the place to check connection status and reconnect
         User user = db.getUserByChatId(chatId);
         if (user == null) {
             if(Pattern.matches("^@[\\w.]+$", messageText)) {
@@ -76,10 +80,9 @@ class ReplayBuilder {
                 replyKeyboardMarkup = null;
             }
         } else {
-            ArrayList<UserTask> tasks;
+            ArrayList<UserTask> tasks = getTaskList(user, db);
             switch (messageText) {
                 case "Получить задание":
-                    tasks = db.getTaskList(user.getId());
                     if (tasks == null) {
                         replayText = "Все задания выполнены, можно размещать ссылку";
                     } else {
@@ -97,7 +100,6 @@ class ReplayBuilder {
                     }
                     break;
                 case "Проверить задание":
-                    tasks = db.getTaskList(user.getId());
                     if (tasks == null) {
                         replayText = "Все задания выполнены, можно размещать ссылку";
                     } else {
@@ -105,22 +107,11 @@ class ReplayBuilder {
                     }
                     break;
                 case "Разместить ссылку":
-                    tasks = db.getTaskList(user.getId());
                     if (tasks != null) {
                         replayText = "Прежде, чем вы сможете разместить ссылку, вы должны выполнить все задания.\n";
                         replayText += "Используйте команды \"Получить задание\" и \"Проверить задание\"\n";
                     } else {
-                        long difference = currentTime - user.getTaskComplite().getTime();
-                        if (difference > (24 * 60 * 60 * 1000)) {
-                            replayText = "Для размещения ссылки отправьте сообщение, содержащее сдедующие строки:\n";
-                            replayText += "1. Ссылка на пост в Instagram, например https://www.instagram.com/p/BtPN5xJBojL/\n";
-                            replayText += "2. Если нужен лайк, строка должна содержать слово \"лайк\". Если лайк не нужен, пропустите эту строку.\n";
-                            replayText += "3. Если нужен комментарий, строка должна содержать слово \"комментарий\" и минимальное количество слов в коментарии (если нужно). Минимальное количество слов в коментарии не может быть больше 4. Например: \"Комментарий от 3 слов\" или просто \"комментарий 3\". Если комментарий не нужен, пропустите эту строку.\n";
-                            replayText += "4. Если вы хотите оставить какое то пояснение к своему заданию, вы можете сделать это в этой строке.\n";
-                        } else {
-                            replayText = "С момента предыдущего размещения прошло " + getInterval(difference) + "\n";
-                            replayText += "Вы сможете разместить ссылку через " + getInterval((24 * 60 * 60 * 1000) - difference) + "\n";
-                        }
+                        replayText = getPostingInstructions(user);
                     }
                     break;
                 default:
@@ -128,24 +119,11 @@ class ReplayBuilder {
                     if (userTask == null) {
                         replayText = "Команда не распознана =(";
                     } else {
-                        tasks = db.getTaskList(user.getId());
                         if (tasks != null) {
                             replayText = "Прежде, чем вы сможете разместить ссылку, вы должны выполнить все задания.\n";
                             replayText += "Используйте команды \"Получить задание\" и \"Проверить задание\"\n";
                         } else {
-                            long difference = currentTime - user.getTaskComplite().getTime();
-                            if (difference < (24 * 60 * 60 * 1000)) {
-                                replayText = "С момента предыдущего размещения прошло " + getInterval(difference) + "\n";
-                                replayText += "Вы сможете разместить ссылку через " + getInterval((24 * 60 * 60 * 1000) - difference) + "\n";
-                            } else {
-                                db.saveTask(userTask);
-                                replayText = "Ссылка размещена:\n";
-                                replayText += "https://www.instagram.com/p/" + userTask.getPostId() + "/\n";
-                                if (userTask.isLikeRequired()) replayText += "Нужен лайк\n";
-                                if (userTask.getCommentRequiredLength() > 0)
-                                    replayText += "Комментарий от " + userTask.getCommentRequiredLength() + " слов\n";
-                                replayText += userTask.getComment();
-                            }
+                            replayText = postTask(user, userTask, db);
                         }
                     }
 
@@ -154,7 +132,14 @@ class ReplayBuilder {
         }
     }
 
+    abstract String postTask(User user, UserTask userTask, DbHandler db);
+
+    abstract String getPostingInstructions(User user);
+
+    abstract ArrayList<UserTask> getTaskList(User user, DbHandler db);
+
     private String checkTask(User user, ArrayList<UserTask> tasks) {
+        //Lazy initialization. If class on test there will be stub
         if (parser == null) parser = new TaskResultParser();
         StringBuilder replay = new StringBuilder();
         for(UserTask task : tasks) {
@@ -190,7 +175,7 @@ class ReplayBuilder {
         return replay.toString();
     }
 
-    private String getInterval(Long ms) {
+    String getInterval(Long ms) {
         long x = ms / 1000;
         long seconds = x % 60;
         x /= 60;
@@ -225,7 +210,7 @@ class ReplayBuilder {
         }
 
         if (lines.length > i) {
-            p = Pattern.compile("(.*?)(комментарий|Комментарий)(.*?)([0-9]{1,})(.*?)", Pattern.DOTALL);
+            p = Pattern.compile("(.*?)(комментарий|Комментарий)(.*?)([0-9]+)(.*?)", Pattern.DOTALL);
             m = p.matcher(lines[i]);
             if (m.matches()) {
                 commentRequiredLength = Integer.parseInt(m.group(4));

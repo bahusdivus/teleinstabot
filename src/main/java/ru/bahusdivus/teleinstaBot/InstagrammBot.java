@@ -12,7 +12,7 @@ class InstagrammBot extends TelegramLongPollingBot {
 
         if (update.hasMessage() && update.getMessage().hasText()) {
 
-            ReplayBuilder replay = new ReplayBuilder(update.getMessage().getText(), update.getMessage().getChatId());
+            ReplayBuilder replay = new ReplayBuilder7Tasks(update.getMessage().getText(), update.getMessage().getChatId());
             replay.buildReplay();
             SendMessage message = new SendMessage().setChatId(update.getMessage().getChatId()).setText(replay.getReplayText());
             message.setReplyMarkup(replay.getReplyKeyboardMarkup());
