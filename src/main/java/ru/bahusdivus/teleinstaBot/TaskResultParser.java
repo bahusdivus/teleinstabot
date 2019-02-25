@@ -1,6 +1,7 @@
 package ru.bahusdivus.teleinstaBot;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import ru.bahusdivus.teleinstaBot.Scrapper.TibInstagramScrapper;
 
@@ -23,19 +24,13 @@ public class TaskResultParser {
         this.scrapper = TibInstagramScrapper.getInstance();
     }
 
-    public boolean checkComment(String instId, String postId, int commentsRequiresLength) {
+    public boolean checkComment(String instId, String postId, int commentsRequiresLength) throws IOException, JSONException {
         String dataResult = null;
 
-        try {
-            String inputLine = scrapper.getPageBody("https://www.instagram.com/p/" + postId + "/");
-            Pattern p = Pattern.compile("(.*?)_sharedData = (.*?);</script>(.*?)", Pattern.DOTALL);
-            Matcher m = p.matcher(inputLine);
-            if (m.matches()) dataResult = m.group(2);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return false;
-        }
-
+        String inputLine = scrapper.getPageBody("https://www.instagram.com/p/" + postId + "/");
+        Pattern p = Pattern.compile("(.*?)_sharedData = (.*?);</script>(.*?)", Pattern.DOTALL);
+        Matcher m = p.matcher(inputLine);
+        if (m.matches()) dataResult = m.group(2);
         if (dataResult == null) return false;
         JSONObject rootJson = new JSONObject(dataResult);
         JSONObject edgesJson = rootJson.getJSONObject("entry_data").getJSONArray("PostPage")
@@ -45,14 +40,10 @@ public class TaskResultParser {
         String endCursor = null;
         while (hasNext) {
             if (edgesJson == null) {
-                try {
-                    endCursor = URLEncoder.encode(Objects.requireNonNull(endCursor), StandardCharsets.UTF_8.toString());
-                    String url = "https://www.instagram.com/graphql/query/?query_hash=f0986789a5c5d17c2400faebf16efd0d&variables=%7B%22shortcode%22%3A%22" + postId + "%22%2C%22first%22%3A32%2C%22after%22%3A%22" + endCursor + "%22%7D";
-                    dataResult = scrapper.getPageBody(url);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    return false;
-                }
+                endCursor = URLEncoder.encode(Objects.requireNonNull(endCursor), StandardCharsets.UTF_8.toString());
+                String url = "https://www.instagram.com/graphql/query/?query_hash=f0986789a5c5d17c2400faebf16efd0d&variables=%7B%22shortcode%22%3A%22" + postId + "%22%2C%22first%22%3A32%2C%22after%22%3A%22" + endCursor + "%22%7D";
+                dataResult = scrapper.getPageBody(url);
+                checkStatus(rootJson);
                 edgesJson = new JSONObject(dataResult).getJSONObject("data").getJSONObject("shortcode_media").getJSONObject("edge_media_to_comment");
             }
 
@@ -74,32 +65,22 @@ public class TaskResultParser {
         return false;
     }
 
-    public boolean checkLike(String instId, String postId) {
+    public boolean checkLike(String instId, String postId) throws IOException, JSONException {
         String dataResult;
-
-        try {
-            String url = "https://www.instagram.com/graphql/query/?query_hash=e0f59e4a1c8d78d0161873bc2ee7ec44&variables=%7B%22shortcode%22%3A%22" + postId + "%22%2C%22include_reel%22%3Atrue%2C%22first%22%3A24%7D";
-            dataResult = scrapper.getPageBody(url);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return false;
-        }
-
+        String url = "https://www.instagram.com/graphql/query/?query_hash=e0f59e4a1c8d78d0161873bc2ee7ec44&variables=%7B%22shortcode%22%3A%22" + postId + "%22%2C%22include_reel%22%3Atrue%2C%22first%22%3A24%7D";
+        dataResult = scrapper.getPageBody(url);
         if (dataResult == null) return false;
         JSONObject rootJson = new JSONObject(dataResult);
+        checkStatus(rootJson);
         JSONObject edgesJson = rootJson.getJSONObject("data").getJSONObject("shortcode_media").getJSONObject("edge_liked_by");
         boolean hasNext = true;
         String endCursor = null;
         while (hasNext) {
             if (edgesJson == null) {
-                try {
-                    endCursor = URLEncoder.encode(Objects.requireNonNull(endCursor), StandardCharsets.UTF_8.toString());
-                    String url = "https://www.instagram.com/graphql/query/?query_hash=e0f59e4a1c8d78d0161873bc2ee7ec44&variables=%7B%22shortcode%22%3A%22" + postId + "%22%2C%22include_reel%22%3Atrue%2C%22first%22%3A24%2C%22after%22%3A%22" + endCursor + "%22%7D";
-                    dataResult = scrapper.getPageBody(url);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    return false;
-                }
+                endCursor = URLEncoder.encode(Objects.requireNonNull(endCursor), StandardCharsets.UTF_8.toString());
+                url = "https://www.instagram.com/graphql/query/?query_hash=e0f59e4a1c8d78d0161873bc2ee7ec44&variables=%7B%22shortcode%22%3A%22" + postId + "%22%2C%22include_reel%22%3Atrue%2C%22first%22%3A24%2C%22after%22%3A%22" + endCursor + "%22%7D";
+                dataResult = scrapper.getPageBody(url);
+                checkStatus(rootJson);
                 edgesJson = new JSONObject(dataResult).getJSONObject("data").getJSONObject("shortcode_media").getJSONObject("edge_liked_by");
             }
 
@@ -116,4 +97,10 @@ public class TaskResultParser {
         return false;
     }
 
+    private void checkStatus(JSONObject jsonObject) throws JSONException {
+        if (!jsonObject.getString("status").equals("ok")) {
+            throw new JSONException("Status: " + jsonObject.getString("status") +
+                    ". Message: " + jsonObject.getString("message"));
+        }
+    }
 }

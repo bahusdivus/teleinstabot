@@ -14,8 +14,6 @@ public class TibInstagramScrapper {
     private SecureRandom random = new SecureRandom();
     private static TibInstagramScrapper instance;
 
-//    private static final String LOGIN_URL = "https://www.instagram.com/accounts/login/ajax/";
-//    private static final String REFERER = "Referer";
     private static final String BASE_URL = "https://www.instagram.com";
 
     public static TibInstagramScrapper getInstance() {
@@ -84,42 +82,13 @@ public class TibInstagramScrapper {
         throw new NullPointerException("Couldn't find CSRFToken");
     }
 
-    //Work unreliably, because of Instagram login challenges time to time. Replaced with hand-made cookies
-/*
-    private void login(String username, String password) throws IOException {
-        if (username == null || password == null) {
-            throw new IOException("Specify username and password");
-        }else if(csrf_token == null) {
-            throw new NullPointerException("Please run before base()");
-        }
-
-        RequestBody formBody = new FormBody.Builder()
-                .add("username", username)
-                .add("password", password)
-                .build();
-        Request request = new Request.Builder()
-                .url(LOGIN_URL)
-                .header(REFERER, BASE_URL + "/")
-                .post(formBody)
-                .build();
-        Response response = executeHttpRequest(withCsrfToken(request));
-        try(InputStream jsonStream = response.body().byteStream()) {
-            JSONObject result = new JSONObject(new BufferedReader(new InputStreamReader(jsonStream))
-                    .lines().collect(Collectors.joining("\n")));
-            if(!(result.get("authenticated") instanceof Boolean && (Boolean)result.get("authenticated"))) {
-                throw new IOException("Credentials rejected by instagram");
-            }
-        }
-    }
-*/
-
     private Response executeHttpRequest(Request request) throws IOException {
         Response response = this.httpClient.newCall(request).execute();
         long currentTime = System.currentTimeMillis();
-        if((currentTime - lastRequestTime.get()) < 200){
+        if((currentTime - lastRequestTime.get()) < 500){
             lastRequestTime.set(currentTime);
             try {
-                Thread.sleep(200L + random.nextInt(100));
+                Thread.sleep(500L + random.nextInt(100));
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

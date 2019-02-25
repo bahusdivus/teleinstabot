@@ -1,9 +1,11 @@
 package ru.bahusdivus.teleinstaBot;
 
+import org.json.JSONException;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
+import java.io.IOException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
@@ -82,6 +84,8 @@ abstract class ReplayBuilder {
         } else {
             ArrayList<UserTask> tasks = getTaskList(user, db);
             switch (messageText) {
+                case "Kill yourself right now, please!":
+                    if (user.getId() == 1) System.exit(0);
                 case "Получить задание":
                     if (tasks == null) {
                         replayText = "Все задания выполнены, можно размещать ссылку";
@@ -103,7 +107,13 @@ abstract class ReplayBuilder {
                     if (tasks == null) {
                         replayText = "Все задания выполнены, можно размещать ссылку";
                     } else {
-                        replayText = checkTask(user, tasks);
+                        try {
+                            replayText = checkTask(user, tasks);
+                        } catch (IOException | JSONException e) {
+                            replayText = "Извините, при выполнении запроса произошла ошибка =(\n";
+                            replayText += "Перешлите, пожалуйста, нижеследующую информацию @bahusdivus.\nСкучная техническая информация:\n";
+                            replayText += e.getMessage();
+                        }
                     }
                     break;
                 case "Разместить ссылку":
@@ -138,7 +148,7 @@ abstract class ReplayBuilder {
 
     abstract ArrayList<UserTask> getTaskList(User user, DbHandler db);
 
-    private String checkTask(User user, ArrayList<UserTask> tasks) {
+    private String checkTask(User user, ArrayList<UserTask> tasks) throws IOException, JSONException {
         //Lazy initialization. If class on test there will be stub
         if (parser == null) parser = new TaskResultParser();
         StringBuilder replay = new StringBuilder();

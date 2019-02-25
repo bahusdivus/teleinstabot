@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
+import java.io.IOException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 
@@ -100,7 +101,7 @@ class ReplayBuilder24HoursTest {
     }
 
     @Test
-    void buildReplay_userCheckTaskAllDone_assertReplayString() {
+    void buildReplay_userCheckTaskAllDone_assertReplayString() throws IOException {
         TaskResultParser parser = Mockito.mock(TaskResultParser.class);
         Mockito.when(parser.checkComment(Mockito.anyString(), Mockito.anyString(), Mockito.anyInt())).thenReturn(true);
         Mockito.when(parser.checkLike(Mockito.anyString(), Mockito.anyString())).thenReturn(true);
@@ -124,7 +125,7 @@ class ReplayBuilder24HoursTest {
     }
 
     @Test
-    void buildReplay_userCheckTaskNoLike_assertReplayString() {
+    void buildReplay_userCheckTaskNoLike_assertReplayString() throws IOException {
         TaskResultParser parser = Mockito.mock(TaskResultParser.class);
         Mockito.when(parser.checkComment(Mockito.anyString(), Mockito.anyString(), Mockito.anyInt())).thenReturn(true);
         Mockito.when(parser.checkLike(Mockito.anyString(), Mockito.anyString())).thenReturn(false);
@@ -148,7 +149,7 @@ class ReplayBuilder24HoursTest {
     }
 
     @Test
-    void buildReplay_userCheckTaskNoComment_assertReplayString() {
+    void buildReplay_userCheckTaskNoComment_assertReplayString() throws IOException {
         TaskResultParser parser = Mockito.mock(TaskResultParser.class);
         Mockito.when(parser.checkComment(Mockito.anyString(), Mockito.anyString(), Mockito.anyInt())).thenReturn(false);
         Mockito.when(parser.checkLike(Mockito.anyString(), Mockito.anyString())).thenReturn(true);
@@ -172,7 +173,7 @@ class ReplayBuilder24HoursTest {
     }
 
     @Test
-    void buildReplay_userCheckTaskNoLikeNoComment_assertReplayString() {
+    void buildReplay_userCheckTaskNoLikeNoComment_assertReplayString() throws IOException {
         TaskResultParser parser = Mockito.mock(TaskResultParser.class);
         Mockito.when(parser.checkComment(Mockito.anyString(), Mockito.anyString(), Mockito.anyInt())).thenReturn(false);
         Mockito.when(parser.checkLike(Mockito.anyString(), Mockito.anyString())).thenReturn(false);
@@ -196,7 +197,7 @@ class ReplayBuilder24HoursTest {
     }
 
     @Test
-    void buildReplay_userCheckTaskAllDone_assertDbWasCalled() {
+    void buildReplay_userCheckTaskAllDone_assertDbWasCalled() throws IOException {
         TaskResultParser parser = Mockito.mock(TaskResultParser.class);
         Mockito.when(parser.checkComment(Mockito.anyString(), Mockito.anyString(), Mockito.anyInt())).thenReturn(true);
         Mockito.when(parser.checkLike(Mockito.anyString(), Mockito.anyString())).thenReturn(true);
@@ -217,7 +218,7 @@ class ReplayBuilder24HoursTest {
     }
 
     @Test
-    void buildReplay_userCheckTaskNotAllDone_assertDbWasNotCalled() {
+    void buildReplay_userCheckTaskNotAllDone_assertDbWasNotCalled() throws IOException {
 
         Timestamp currentTimestamp = new Timestamp(System.currentTimeMillis());
         ArrayList<UserTask> tasks = new ArrayList<>();
@@ -434,6 +435,5 @@ class ReplayBuilder24HoursTest {
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
         Assertions.assertNotNull(replayBuilder.getReplyKeyboardMarkup());
     }
-
 
 }
