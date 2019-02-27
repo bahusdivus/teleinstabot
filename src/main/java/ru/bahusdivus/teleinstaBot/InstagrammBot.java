@@ -13,14 +13,25 @@ class InstagrammBot extends TelegramLongPollingBot {
         if (update.hasMessage() && update.getMessage().hasText()) {
 
             ReplayBuilder replay = new ReplayBuilder7Tasks(update.getMessage().getText(), update.getMessage().getChatId());
-            replay.buildReplay();
-            SendMessage message = new SendMessage().setChatId(update.getMessage().getChatId()).setText(replay.getReplayText());
-            message.setReplyMarkup(replay.getReplyKeyboardMarkup());
-
             try {
-                execute(message);
-            } catch (TelegramApiException e) {
-                e.printStackTrace();
+                replay.buildReplay();
+                SendMessage message = new SendMessage().setChatId(update.getMessage().getChatId()).setText(replay.getReplayText());
+                message.setReplyMarkup(replay.getReplyKeyboardMarkup());
+                try {
+                    execute(message);
+                } catch (TelegramApiException e) {
+                    e.printStackTrace();
+                }
+            } catch (Exception e) {
+                if (e.getMessage().equals("EXIT_REQUEST")) {
+                    SendMessage message = new SendMessage().setChatId(update.getMessage().getChatId()).setText("Shutting down now");
+                    try {
+                        execute(message);
+                    } catch (TelegramApiException te) {
+                        te.printStackTrace();
+                    }
+                    System.exit(0);
+                } else e.printStackTrace();
             }
         }
     }

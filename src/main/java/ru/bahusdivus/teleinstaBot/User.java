@@ -1,13 +1,23 @@
 package ru.bahusdivus.teleinstaBot;
 
-import java.sql.Timestamp;
 
+import javax.persistence.*;
+import java.sql.Timestamp;
+import java.util.HashSet;
+import java.util.Set;
+
+@Entity
+@Table(name="users")
 class User {
     private int id;
     private String instId;
     private Long chatId;
     private Timestamp taskTaken;
     private Timestamp taskComplite;
+
+    Set<UserTask> userTasks = new HashSet<>();
+
+    User () {}
 
     User(String instId, Long chatId) {
         this.instId = instId;
@@ -22,8 +32,15 @@ class User {
         this.taskComplite = taskComplite;
     }
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name="userId", updatable = false, nullable = false)
     int getId() {
         return id;
+    }
+
+    void setId(int id) {
+        this.id = id;
     }
 
     String getInstId() {
@@ -56,6 +73,20 @@ class User {
 
     void setTaskComplite(Timestamp taskComplite) {
         this.taskComplite = taskComplite;
+    }
+
+    @ManyToMany (cascade = {CascadeType.ALL})
+    @JoinTable(
+            name = "tasklist",
+            joinColumns = { @JoinColumn(name = "userId")},
+            inverseJoinColumns = {@JoinColumn(name = "taskId")}
+    )
+    public Set<UserTask> getUserTasks() {
+        return userTasks;
+    }
+
+    public void setUserTasks(Set<UserTask> userTasks) {
+        this.userTasks = userTasks;
     }
 
     @Override

@@ -65,11 +65,10 @@ abstract class ReplayBuilder {
         return replyKeyboardMarkup;
     }
 
-    void buildReplay() {
+    void buildReplay() throws Exception {
         //Lazy initialization. If class on test there will be stubs
         if (db == null) db = DbHandler.getInstance();
         if (currentTime == null) currentTime = System.currentTimeMillis();
-        //TODO: There is the place to check connection status and reconnect
         User user = db.getUserByChatId(chatId);
         if (user == null) {
             if(Pattern.matches("^@[\\w.]+$", messageText)) {
@@ -85,7 +84,7 @@ abstract class ReplayBuilder {
             ArrayList<UserTask> tasks = getTaskList(user, db);
             switch (messageText) {
                 case "Kill yourself right now, please!":
-                    if (user.getId() == 1) System.exit(0);
+                    if (user.getId() == 1) throw new Exception("EXIT_REQUEST");
                 case "Получить задание":
                     if (tasks == null) {
                         replayText = "Все задания выполнены, можно размещать ссылку";

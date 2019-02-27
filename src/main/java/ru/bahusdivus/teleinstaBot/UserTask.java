@@ -1,35 +1,46 @@
 package ru.bahusdivus.teleinstaBot;
 
+import javax.persistence.*;
 import java.sql.Timestamp;
+import java.util.HashSet;
+import java.util.Set;
 
+@Entity
+@Table(name="task")
 public class UserTask {
     private int id;
     private int ownerId;
     private String postId;
-    private boolean isLikeRequired;
+    private boolean likeRequired;
     private int commentRequiredLength;
     private String comment;
     private Timestamp created;
+    private Set<User> users = new HashSet<>();
 
-    public UserTask(int id, int ownerId, String postId, boolean isLikeRequired, int commentRequiredLength, String comment, Timestamp created) {
+    UserTask() {}
+
+    public UserTask(int id, int ownerId, String postId, boolean likeRequired, int commentRequiredLength, String comment, Timestamp created) {
         this.id = id;
         this.ownerId = ownerId;
         this.postId = postId;
-        this.isLikeRequired = isLikeRequired;
+        this.likeRequired = likeRequired;
         this.commentRequiredLength = commentRequiredLength;
         this.comment = comment;
         this.created = created;
     }
 
-    public UserTask(int ownerId, String postId, boolean isLikeRequired, int commentRequiredLength, String comment, Timestamp created) {
+    public UserTask(int ownerId, String postId, boolean likeRequired, int commentRequiredLength, String comment, Timestamp created) {
         this.ownerId = ownerId;
         this.postId = postId;
-        this.isLikeRequired = isLikeRequired;
+        this.likeRequired = likeRequired;
         this.commentRequiredLength = commentRequiredLength;
         this.comment = comment;
         this.created = created;
     }
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name="taskId", updatable = false, nullable = false)
     public int getId() {
         return id;
     }
@@ -42,8 +53,9 @@ public class UserTask {
         return postId;
     }
 
+    @Column(name="isLikeRequired")
     boolean isLikeRequired() {
-        return isLikeRequired;
+        return likeRequired;
     }
 
     int getCommentRequiredLength() {
@@ -58,6 +70,15 @@ public class UserTask {
         return created;
     }
 
+    @ManyToMany (mappedBy = "userTasks")
+    public Set<User> getUsers() {
+        return users;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
     public void setOwnerId(int ownerId) {
         this.ownerId = ownerId;
     }
@@ -67,7 +88,7 @@ public class UserTask {
     }
 
     public void setLikeRequired(boolean likeRequired) {
-        isLikeRequired = likeRequired;
+        this.likeRequired = likeRequired;
     }
 
     public void setCommentRequiredLength(int commentRequiredLength) {
@@ -80,6 +101,10 @@ public class UserTask {
 
     public void setCreated(Timestamp created) {
         this.created = created;
+    }
+
+    public void setUsers(Set<User> users) {
+        this.users = users;
     }
 
     @Override
@@ -103,7 +128,7 @@ public class UserTask {
                 "id=" + id +
                 ", ownerId=" + ownerId +
                 ", postId='" + postId + '\'' +
-                ", isLikeRequired=" + isLikeRequired +
+                ", likeRequired=" + likeRequired +
                 ", commentRequiredLength=" + commentRequiredLength +
                 ", comment='" + comment + '\'' +
                 ", created=" + created +
