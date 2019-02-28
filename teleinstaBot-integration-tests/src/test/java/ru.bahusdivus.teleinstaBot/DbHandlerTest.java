@@ -14,12 +14,6 @@ class DbHandlerTest {
     }
 
     @Test
-    void createDB_notThrowException() {
-        DbHandler db = DbHandler.getInstance();
-        Assertions.assertDoesNotThrow(() -> db.createDB());
-    }
-
-    @Test
     void saveUser_newUser_returnsAIid() {
         DbHandler dbHandler = DbHandler.getInstance();
         int id = dbHandler.saveUser(new User("@testUser", 1L));

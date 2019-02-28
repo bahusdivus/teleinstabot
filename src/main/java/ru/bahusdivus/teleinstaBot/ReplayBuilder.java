@@ -169,6 +169,7 @@ abstract class ReplayBuilder {
                 }
             }
             if (isPass) {
+                //TODO: cange to Hiberante impl db.compliteTask(user, task) here and in tests
                 db.compliteTask(user.getId(), task.getId());
             } else {
                 if (task.getComment().length() > 0) {

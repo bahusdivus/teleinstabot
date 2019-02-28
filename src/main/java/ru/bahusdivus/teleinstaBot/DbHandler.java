@@ -1,7 +1,5 @@
 package ru.bahusdivus.teleinstaBot;
 
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
@@ -10,16 +8,12 @@ import javax.persistence.NoResultException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Properties;
 
 class DbHandler {
 
     private static DbHandler instance = null;
-    private HikariDataSource ds;
     private SessionFactory sessions;
 
     static synchronized DbHandler getInstance() {
@@ -35,27 +29,12 @@ class DbHandler {
                 Properties properties = new Properties();
                 properties.load(reader);
                 String jdbcUrl = properties.getProperty("db.link") + properties.getProperty("db.db") + "?useLegacyDatetimeCode=false&serverTimezone=UTC";
-                HikariConfig config = new HikariConfig();
-                config.setJdbcUrl(jdbcUrl);
-                config.setUsername(properties.getProperty("db.user"));
-                config.setPassword(properties.getProperty("db.password"));
-                config.addDataSourceProperty("cachePrepStmts", "true");
-                config.addDataSourceProperty("prepStmtCacheSize", "250");
-                config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
-                config.addDataSourceProperty("useServerPrepStmts", "true");
-                config.addDataSourceProperty("useLocalSessionState", "true");
-                config.addDataSourceProperty("rewriteBatchedStatements", "true");
-                config.addDataSourceProperty("cacheResultSetMetadata", "true");
-                config.addDataSourceProperty("cacheServerConfiguration", "true");
-                config.addDataSourceProperty("elideSetAutoCommits", "true");
-                config.addDataSourceProperty("maintainTimeStats", "false");
-                ds = new HikariDataSource(config);
-
                 Configuration cfg = new Configuration()
                         .addAnnotatedClass(ru.bahusdivus.teleinstaBot.User.class)
                         .addAnnotatedClass(ru.bahusdivus.teleinstaBot.UserTask.class)
                         .setProperty("hibernate.dialect", "org.hibernate.dialect.MySQL5Dialect")
                         .setProperty("hibernate.show_sql", "true")
+//                        .setProperty("hibernate.hibernate.hbm2ddl.auto", "create")
                         .setProperty("hibernate.connection.provider_class", "org.hibernate.hikaricp.internal.HikariCPConnectionProvider")
                         .setProperty("hibernate.hikari.minimumIdle", "5")
                         .setProperty("hibernate.hikari.maximumPoolSize", "10")
@@ -72,17 +51,6 @@ class DbHandler {
             e.printStackTrace();
         }
 
-    }
-
-    void createDB() {
-        try (Connection connection = ds.getConnection();
-             Statement statement = connection.createStatement()) {
-            statement.execute("CREATE TABLE if not exists users (userId int AUTO_INCREMENT, instId text, chatId bigint, taskTaken timestamp, taskComplite timestamp, PRIMARY KEY (userId));");
-            statement.execute("CREATE TABLE if not exists task (taskId int AUTO_INCREMENT, ownerId int, postId text, isLikeRequired boolean, commentRequiredLength int, comment text, created timestamp, PRIMARY KEY (taskId));");
-            statement.execute("CREATE TABLE if not exists tasklist (userId int, taskId int);");
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
     }
 
     User getUserByChatId(Long chatId) {
@@ -133,39 +101,40 @@ class DbHandler {
         }
     }
 
+    //TODO: Change to Hibernate compliteTask(User user, UserTask task)
     void compliteTask(int userId, int taskId) {
-        try (Connection connection = ds.getConnection();
-             Statement statement = connection.createStatement()) {
-            statement.execute("INSERT INTO tasklist (userId, taskId) VALUES (" + userId + ", " + taskId + ")");
-        } catch (SQLException e) {
-            e.printStackTrace();
+        try(Session session = sessions.openSession()) {
+            session.beginTransaction();
+            session.createNativeQuery("INSERT INTO tasklist (userId, taskId) VALUES (" + userId + ", " + taskId + ")").executeUpdate();
+            session.getTransaction().commit();
         }
     }
 
     int saveTask(UserTask task) {
-        Session session = sessions.openSession();
-        session.beginTransaction();
-        session.saveOrUpdate(task);
-        session.flush();
-        session.getTransaction().commit();
+        try(Session session = sessions.openSession()) {
+            session.beginTransaction();
+            session.saveOrUpdate(task);
+            session.flush();
+            session.getTransaction().commit();
+        }
         return task.getId();
     }
 
     void deleteUser(int id) {
-        try (Connection connection = ds.getConnection();
-             Statement statement = connection.createStatement()) {
-            statement.execute("DELETE FROM users WHERE userId = " + id);
-        } catch (SQLException e) {
-            e.printStackTrace();
+        try (Session session = sessions.openSession()) {
+            session.beginTransaction();
+            User user = session.load(User.class, id);
+            session.delete(user);
+            session.getTransaction().commit();
         }
     }
 
     void deleteTask(int id) {
-        try (Connection connection = ds.getConnection();
-             Statement statement = connection.createStatement()) {
-            statement.execute("DELETE FROM task WHERE taskId = " + id);
-        } catch (SQLException e) {
-            e.printStackTrace();
+        try (Session session = sessions.openSession()) {
+            session.beginTransaction();
+            UserTask task = session.load(UserTask.class, id);
+            session.delete(task);
+            session.getTransaction().commit();
         }
     }
 }
