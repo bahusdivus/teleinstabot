@@ -1,5 +1,6 @@
 package ru.bahusdivus.teleinstaBot;
 
+import org.json.JSONException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
@@ -9,7 +10,7 @@ import java.io.IOException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 
-class ReplayBuilder24HoursTest {
+class ReplayBuilder7TasksTest {
 
     @Test
     void buildReplay_userAskForTaskHaveNone_assertReplayString() {
@@ -17,9 +18,9 @@ class ReplayBuilder24HoursTest {
         String expect = "Все задания выполнены, можно размещать ссылку";
         DbHandler dbHandler = Mockito.mock(DbHandler.class);
         Mockito.when(dbHandler.getUserByChatId(1L)).thenReturn(new User(1, "@username", 1L, currentTimestamp, currentTimestamp));
-        Mockito.when(dbHandler.getTaskListLast24Hours(1)).thenReturn(null);
+        Mockito.when(dbHandler.getTaskListLast7(1)).thenReturn(null);
 
-        ReplayBuilder replayBuilder = new ReplayBuilder24Hours("Получить задание", 1L);
+        ReplayBuilder replayBuilder = new ReplayBuilder7Tasks("Получить задание", 1L);
         replayBuilder.setDb(dbHandler);
         Assertions.assertDoesNotThrow(()->replayBuilder.buildReplay());
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
@@ -37,9 +38,9 @@ class ReplayBuilder24HoursTest {
         expect += "Комментарий к заданию: asfasf\n\n";
         DbHandler dbHandler = Mockito.mock(DbHandler.class);
         Mockito.when(dbHandler.getUserByChatId(1L)).thenReturn(new User(1, "@username", 1L, currentTimestamp, currentTimestamp));
-        Mockito.when(dbHandler.getTaskListLast24Hours(1)).thenReturn(tasks);
+        Mockito.when(dbHandler.getTaskListLast7(1)).thenReturn(tasks);
 
-        ReplayBuilder replayBuilder = new ReplayBuilder24Hours("Получить задание", 1L);
+        ReplayBuilder replayBuilder = new ReplayBuilder7Tasks("Получить задание", 1L);
         replayBuilder.setDb(dbHandler);
         Assertions.assertDoesNotThrow(()->replayBuilder.buildReplay());
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
@@ -52,11 +53,11 @@ class ReplayBuilder24HoursTest {
 
         DbHandler dbHandler = Mockito.mock(DbHandler.class);
         Mockito.when(dbHandler.getUserByChatId(1L)).thenReturn(new User(1, "@username", 1L, currentTimestamp, currentTimestamp));
-        Mockito.when(dbHandler.getTaskListLast24Hours(1)).thenReturn(null);
+        Mockito.when(dbHandler.getTaskListLast7(1)).thenReturn(null);
 
         String expect = "Все задания выполнены, можно размещать ссылку";
 
-        ReplayBuilder replayBuilder = new ReplayBuilder24Hours("Проверить задание", 1L);
+        ReplayBuilder replayBuilder = new ReplayBuilder7Tasks("Проверить задание", 1L);
         replayBuilder.setDb(dbHandler);
         Assertions.assertDoesNotThrow(()->replayBuilder.buildReplay());
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
@@ -75,16 +76,42 @@ class ReplayBuilder24HoursTest {
 
         DbHandler dbHandler = Mockito.mock(DbHandler.class);
         Mockito.when(dbHandler.getUserByChatId(1L)).thenReturn(new User(1, "@username", 1L, currentTimestamp, currentTimestamp));
-        Mockito.when(dbHandler.getTaskListLast24Hours(1)).thenReturn(tasks);
+        Mockito.when(dbHandler.getTaskListLast7(1)).thenReturn(tasks);
 
         String expect = "Вы выполнили все условия и можете разместить ссылку!";
 
-        ReplayBuilder replayBuilder = new ReplayBuilder24Hours("Проверить задание", 1L);
+        ReplayBuilder replayBuilder = new ReplayBuilder7Tasks("Проверить задание", 1L);
         replayBuilder.setDb(dbHandler);
         replayBuilder.setParser(parser);
         Assertions.assertDoesNotThrow(()->replayBuilder.buildReplay());
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
         Assertions.assertNotNull(replayBuilder.getReplyKeyboardMarkup());
+    }
+
+    @Test
+    void buildReplay_userCheckTask_throwsException() throws IOException {
+        TaskResultParser parser = Mockito.mock(TaskResultParser.class);
+        Mockito.when(parser.checkComment(Mockito.anyString(), Mockito.anyString(), Mockito.anyInt())).thenThrow(JSONException.class);
+        Mockito.when(parser.checkLike(Mockito.anyString(), Mockito.anyString())).thenThrow(JSONException.class);
+
+        Timestamp currentTimestamp = new Timestamp(System.currentTimeMillis());
+        ArrayList<UserTask> tasks = new ArrayList<>();
+        tasks.add(new UserTask(1, "sadad", true, 1, "asfasf", currentTimestamp));
+
+        DbHandler dbHandler = Mockito.mock(DbHandler.class);
+        Mockito.when(dbHandler.getUserByChatId(1L)).thenReturn(new User(1, "@username", 1L, currentTimestamp, currentTimestamp));
+        Mockito.when(dbHandler.getTaskListLast7(1)).thenReturn(tasks);
+
+        ReplayBuilder replayBuilder = new ReplayBuilder7Tasks("Проверить задание", 1L);
+        replayBuilder.setDb(dbHandler);
+        replayBuilder.setParser(parser);
+        String expexted = "Извините, при выполнении запроса произошла ошибка =(\n" +
+                "Перешлите, пожалуйста, нижеследующую информацию @bahusdivus.\n" +
+                "Скучная техническая информация:\n" +
+                "null";
+
+        Assertions.assertDoesNotThrow(()->replayBuilder.buildReplay());
+        Assertions.assertEquals(expexted, replayBuilder.getReplayText());
     }
 
     @Test
@@ -99,11 +126,11 @@ class ReplayBuilder24HoursTest {
 
         DbHandler dbHandler = Mockito.mock(DbHandler.class);
         Mockito.when(dbHandler.getUserByChatId(1L)).thenReturn(new User(1, "@username", 1L, currentTimestamp, currentTimestamp));
-        Mockito.when(dbHandler.getTaskListLast24Hours(1)).thenReturn(tasks);
+        Mockito.when(dbHandler.getTaskListLast7(1)).thenReturn(tasks);
 
         String expect = "https://www.instagram.com/p/sadad/\nНужен лайк\nasfasf\n\n";
 
-        ReplayBuilder replayBuilder = new ReplayBuilder24Hours("Проверить задание", 1L);
+        ReplayBuilder replayBuilder = new ReplayBuilder7Tasks("Проверить задание", 1L);
         replayBuilder.setDb(dbHandler);
         replayBuilder.setParser(parser);
         Assertions.assertDoesNotThrow(()->replayBuilder.buildReplay());
@@ -123,11 +150,11 @@ class ReplayBuilder24HoursTest {
 
         DbHandler dbHandler = Mockito.mock(DbHandler.class);
         Mockito.when(dbHandler.getUserByChatId(1L)).thenReturn(new User(1, "@username", 1L, currentTimestamp, currentTimestamp));
-        Mockito.when(dbHandler.getTaskListLast24Hours(1)).thenReturn(tasks);
+        Mockito.when(dbHandler.getTaskListLast7(1)).thenReturn(tasks);
 
         String expect = "https://www.instagram.com/p/sadad/\nНужен комментарий не менее 1 слов\nasfasf\n\n";
 
-        ReplayBuilder replayBuilder = new ReplayBuilder24Hours("Проверить задание", 1L);
+        ReplayBuilder replayBuilder = new ReplayBuilder7Tasks("Проверить задание", 1L);
         replayBuilder.setDb(dbHandler);
         replayBuilder.setParser(parser);
         Assertions.assertDoesNotThrow(()->replayBuilder.buildReplay());
@@ -147,11 +174,11 @@ class ReplayBuilder24HoursTest {
 
         DbHandler dbHandler = Mockito.mock(DbHandler.class);
         Mockito.when(dbHandler.getUserByChatId(1L)).thenReturn(new User(1, "@username", 1L, currentTimestamp, currentTimestamp));
-        Mockito.when(dbHandler.getTaskListLast24Hours(1)).thenReturn(tasks);
+        Mockito.when(dbHandler.getTaskListLast7(1)).thenReturn(tasks);
 
         String expect = "https://www.instagram.com/p/sadad/\nНужен лайк\nНужен комментарий не менее 1 слов\nasfasf\n\n";
 
-        ReplayBuilder replayBuilder = new ReplayBuilder24Hours("Проверить задание", 1L);
+        ReplayBuilder replayBuilder = new ReplayBuilder7Tasks("Проверить задание", 1L);
         replayBuilder.setDb(dbHandler);
         replayBuilder.setParser(parser);
         Assertions.assertDoesNotThrow(()->replayBuilder.buildReplay());
@@ -171,9 +198,9 @@ class ReplayBuilder24HoursTest {
 
         DbHandler dbHandler = Mockito.mock(DbHandler.class);
         Mockito.when(dbHandler.getUserByChatId(1L)).thenReturn(new User(1, "@username", 1L, currentTimestamp, currentTimestamp));
-        Mockito.when(dbHandler.getTaskListLast24Hours(1)).thenReturn(tasks);
+        Mockito.when(dbHandler.getTaskListLast7(1)).thenReturn(tasks);
 
-        ReplayBuilder replayBuilder = new ReplayBuilder24Hours("Проверить задание", 1L);
+        ReplayBuilder replayBuilder = new ReplayBuilder7Tasks("Проверить задание", 1L);
         replayBuilder.setDb(dbHandler);
         replayBuilder.setParser(parser);
         Assertions.assertDoesNotThrow(()->replayBuilder.buildReplay());
@@ -189,11 +216,11 @@ class ReplayBuilder24HoursTest {
 
         DbHandler dbHandler = Mockito.mock(DbHandler.class);
         Mockito.when(dbHandler.getUserByChatId(1L)).thenReturn(new User(1, "@username", 1L, currentTimestamp, currentTimestamp));
-        Mockito.when(dbHandler.getTaskListLast24Hours(1)).thenReturn(tasks);
+        Mockito.when(dbHandler.getTaskListLast7(1)).thenReturn(tasks);
 
         TaskResultParser parser = Mockito.mock(TaskResultParser.class);
 
-        ReplayBuilder replayBuilder = new ReplayBuilder24Hours("Проверить задание", 1L);
+        ReplayBuilder replayBuilder = new ReplayBuilder7Tasks("Проверить задание", 1L);
         replayBuilder.setDb(dbHandler);
         replayBuilder.setParser(parser);
 
@@ -221,28 +248,10 @@ class ReplayBuilder24HoursTest {
         expect += "Используйте команды \"Получить задание\" и \"Проверить задание\"\n";
         DbHandler dbHandler = Mockito.mock(DbHandler.class);
         Mockito.when(dbHandler.getUserByChatId(1L)).thenReturn(new User(1, "@username", 1L, currentTimestamp, currentTimestamp));
-        Mockito.when(dbHandler.getTaskListLast24Hours(1)).thenReturn(tasks);
+        Mockito.when(dbHandler.getTaskListLast7(1)).thenReturn(tasks);
 
-        ReplayBuilder replayBuilder = new ReplayBuilder24Hours("Разместить ссылку", 1L);
+        ReplayBuilder replayBuilder = new ReplayBuilder7Tasks("Разместить ссылку", 1L);
         replayBuilder.setDb(dbHandler);
-        Assertions.assertDoesNotThrow(()->replayBuilder.buildReplay());
-        Assertions.assertEquals(expect, replayBuilder.getReplayText());
-        Assertions.assertNotNull(replayBuilder.getReplyKeyboardMarkup());
-    }
-
-    @Test
-    void buildReplay_userWantToPostLinkDoneRecently_assertReplayString() {
-        long ms = System.currentTimeMillis();
-        Timestamp compliteTimestamp = new Timestamp(ms - 23 * 60 * 60 * 1000);
-        String expect = "С момента предыдущего размещения прошло 23:00:00\n";
-        expect += "Вы сможете разместить ссылку через 01:00:00\n";
-        DbHandler dbHandler = Mockito.mock(DbHandler.class);
-        Mockito.when(dbHandler.getUserByChatId(1L)).thenReturn(new User(1, "@username", 1L, compliteTimestamp, compliteTimestamp));
-        Mockito.when(dbHandler.getTaskListLast24Hours(1)).thenReturn(null);
-
-        ReplayBuilder replayBuilder = new ReplayBuilder24Hours("Разместить ссылку", 1L);
-        replayBuilder.setDb(dbHandler);
-        replayBuilder.setCurrentTime(ms);
         Assertions.assertDoesNotThrow(()->replayBuilder.buildReplay());
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
         Assertions.assertNotNull(replayBuilder.getReplyKeyboardMarkup());
@@ -261,9 +270,9 @@ class ReplayBuilder24HoursTest {
 
         DbHandler dbHandler = Mockito.mock(DbHandler.class);
         Mockito.when(dbHandler.getUserByChatId(1L)).thenReturn(new User(1, "@username", 1L, compliteTimestamp, compliteTimestamp));
-        Mockito.when(dbHandler.getTaskListLast24Hours(1)).thenReturn(null);
+        Mockito.when(dbHandler.getTaskListLast7(1)).thenReturn(null);
 
-        ReplayBuilder replayBuilder = new ReplayBuilder24Hours("Разместить ссылку", 1L);
+        ReplayBuilder replayBuilder = new ReplayBuilder7Tasks("Разместить ссылку", 1L);
         replayBuilder.setDb(dbHandler);
         replayBuilder.setCurrentTime(ms);
         Assertions.assertDoesNotThrow(()->replayBuilder.buildReplay());
@@ -280,39 +289,15 @@ class ReplayBuilder24HoursTest {
         expect += "Используйте команды \"Получить задание\" и \"Проверить задание\"\n";
         DbHandler dbHandler = Mockito.mock(DbHandler.class);
         Mockito.when(dbHandler.getUserByChatId(1L)).thenReturn(new User(1, "@username", 1L, currentTimestamp, currentTimestamp));
-        Mockito.when(dbHandler.getTaskListLast24Hours(1)).thenReturn(tasks);
+        Mockito.when(dbHandler.getTaskListLast7(1)).thenReturn(tasks);
 
         String linkTest = "https://www.instagram.com/p/BtPN5xJBojL/\n";
         linkTest += "Нужен лайк\n";
         linkTest += "Комментарий от 3 слов\n";
         linkTest += "Мама мыла раму";
 
-        ReplayBuilder replayBuilder = new ReplayBuilder24Hours(linkTest, 1L);
+        ReplayBuilder replayBuilder = new ReplayBuilder7Tasks(linkTest, 1L);
         replayBuilder.setDb(dbHandler);
-        Assertions.assertDoesNotThrow(()->replayBuilder.buildReplay());
-        Assertions.assertEquals(expect, replayBuilder.getReplayText());
-        Mockito.verify(dbHandler, Mockito.never()).saveTask(Mockito.any(UserTask.class));
-        Assertions.assertNotNull(replayBuilder.getReplyKeyboardMarkup());
-    }
-
-    @Test
-    void buildReplay_userPostLinkDoneRecently_assertReplayString() {
-        long ms = System.currentTimeMillis();
-        Timestamp compliteTimestamp = new Timestamp(ms - 23 * 60 * 60 * 1000);
-        String expect = "С момента предыдущего размещения прошло 23:00:00\n";
-        expect += "Вы сможете разместить ссылку через 01:00:00\n";
-        DbHandler dbHandler = Mockito.mock(DbHandler.class);
-        Mockito.when(dbHandler.getUserByChatId(1L)).thenReturn(new User(1, "@username", 1L, compliteTimestamp, compliteTimestamp));
-        Mockito.when(dbHandler.getTaskListLast24Hours(1)).thenReturn(null);
-
-        String linkTest = "https://www.instagram.com/p/BtPN5xJBojL/\n";
-        linkTest += "Нужен лайк\n";
-        linkTest += "Комментарий от 3 слов\n";
-        linkTest += "Мама мыла раму";
-
-        ReplayBuilder replayBuilder = new ReplayBuilder24Hours(linkTest, 1L);
-        replayBuilder.setDb(dbHandler);
-        replayBuilder.setCurrentTime(ms);
         Assertions.assertDoesNotThrow(()->replayBuilder.buildReplay());
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
         Mockito.verify(dbHandler, Mockito.never()).saveTask(Mockito.any(UserTask.class));
@@ -326,13 +311,13 @@ class ReplayBuilder24HoursTest {
 
         DbHandler dbHandler = Mockito.mock(DbHandler.class);
         Mockito.when(dbHandler.getUserByChatId(1L)).thenReturn(new User(1, "@username", 1L, compliteTimestamp, compliteTimestamp));
-        Mockito.when(dbHandler.getTaskListLast24Hours(1)).thenReturn(null);
+        Mockito.when(dbHandler.getTaskListLast7(1)).thenReturn(null);
 
         String linkTest = "https://www.instagram.com/p/\n";
         linkTest += "Нужен лайк\n";
         linkTest += "Комментарий от 3 слов\n";
         linkTest += "Мама мыла раму";
-        ReplayBuilder replayBuilder = new ReplayBuilder24Hours(linkTest, 1L);
+        ReplayBuilder replayBuilder = new ReplayBuilder7Tasks(linkTest, 1L);
         replayBuilder.setDb(dbHandler);
         replayBuilder.setCurrentTime(ms);
         Assertions.assertDoesNotThrow(()->replayBuilder.buildReplay());
@@ -341,7 +326,7 @@ class ReplayBuilder24HoursTest {
 
         linkTest = "https://www.instagram.com/p/BtPN5xJBojL/\n";
         linkTest += "Мама мыла раму";
-        ReplayBuilder replayBuilder2 = new ReplayBuilder24Hours(linkTest, 1L);
+        ReplayBuilder replayBuilder2 = new ReplayBuilder7Tasks(linkTest, 1L);
         replayBuilder2.setDb(dbHandler);
         replayBuilder2.setCurrentTime(ms);
         Assertions.assertDoesNotThrow(()->replayBuilder2.buildReplay());
@@ -365,14 +350,14 @@ class ReplayBuilder24HoursTest {
 
         DbHandler dbHandler = Mockito.mock(DbHandler.class);
         Mockito.when(dbHandler.getUserByChatId(1L)).thenReturn(new User(1, "@username", 1L, compliteTimestamp, compliteTimestamp));
-        Mockito.when(dbHandler.getTaskListLast24Hours(1)).thenReturn(null);
+        Mockito.when(dbHandler.getTaskListLast7(1)).thenReturn(null);
 
         String linkTest = "https://www.instagram.com/p/BtPN5xJBojL/\n";
         linkTest += "Нужен лайк\n";
         linkTest += "Комментарий от 3 слов\n";
         linkTest += "Мама мыла раму";
 
-        ReplayBuilder replayBuilder = new ReplayBuilder24Hours(linkTest, 1L);
+        ReplayBuilder replayBuilder = new ReplayBuilder7Tasks(linkTest, 1L);
         replayBuilder.setDb(dbHandler);
         replayBuilder.setCurrentTime(ms);
         Assertions.assertDoesNotThrow(()->replayBuilder.buildReplay());
@@ -389,9 +374,9 @@ class ReplayBuilder24HoursTest {
 
         DbHandler dbHandler = Mockito.mock(DbHandler.class);
         Mockito.when(dbHandler.getUserByChatId(1L)).thenReturn(new User(1, "@username", 1L, compliteTimestamp, compliteTimestamp));
-        Mockito.when(dbHandler.getTaskListLast24Hours(1)).thenReturn(null);
+        Mockito.when(dbHandler.getTaskListLast7(1)).thenReturn(null);
 
-        ReplayBuilder replayBuilder = new ReplayBuilder24Hours("Meanless String", 1L);
+        ReplayBuilder replayBuilder = new ReplayBuilder7Tasks("Meanless String", 1L);
         replayBuilder.setDb(dbHandler);
         Assertions.assertDoesNotThrow(()->replayBuilder.buildReplay());
         Assertions.assertEquals(expect, replayBuilder.getReplayText());
